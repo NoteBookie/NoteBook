@@ -4,16 +4,12 @@ import urllib2
 import cookielib
 import re
 
-#change your information
-username = ''
-password = ''
-
 def login():
     login_url = 'http://www.xiami.com/web/login'
     data = {
         # change your information here
-        'email' : username ,
-        'password' : password ,
+        'email' : '' ,
+        'password' : '' ,
         'LoginButton' : '登 录'
         }
     login_data = urllib.urlencode(data)
@@ -51,9 +47,9 @@ def signin(response):
     req = urllib2.Request(url, None , headers=headers)
     result = urllib2.urlopen(req).read().decode('utf-8')
 
-    match = re.findall(ur'已连续签到(\d+)天', result, re.S)[0]
-    if match:
-        print 'Success! You have signed in %s days[Now]' %match
+    match = re.findall(ur'已连续签到(\d+)天', result, re.S)
+    if match != []:
+        print 'Success! You have signed in %s days[Now]' % match[0]
     else:
         print 'SignIn Failed. The evil-coder changed something.'
     
@@ -65,14 +61,13 @@ def checkin():
         }
     creq = urllib2.Request(checkin_url, None , headers=headers)
     response = urllib2.urlopen(creq).read().decode('utf-8')
-
+    
     #start to sign in
-    match = re.findall(ur'<d.*?>已连续签到(\d+)天</div>',response, re.S)[0]
-
-    if match:
-        print 'Success! You have signed in %s days[already]' % match
+    match = re.findall(ur'已连续签到(\d+)天', response, re.S)
+    if match != []:
+        print 'Success! You have signed in %s days[already]' % match[0]
     else:
-        sighin(response)
+        signin(response)
 
 
 if __name__ == '__main__':
