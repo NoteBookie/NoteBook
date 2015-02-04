@@ -37,26 +37,26 @@ def login():
         'email':username,
         'password':password,
         'done': 'http://www.xiami.com/account',
-        'submit': '登 录'
+        'submit': u'登 录'
         }
     headers = {
         'user-agent': 'Mozilla/5.0',
         }
-    req.post(url, data=data, headers=headers)
+    req.post(url, data=data, headers=headers).text
+    
 
 def download(id, filename='MySongs'):
     response = req.get('http://www.xiami.com/song/playlist/id/%s' % id,
                        headers = {'user-agent': 'Mozilla/5.0',}).text
     data = xmltodict.parse(response)['playlist']['trackList']['track']
     name = data['title']
-    #print name
+    
     url = decode(data['location']).encode('utf-8')
-    #print url
     if not os.path.exists(filename):
         print 'Creating a new folder...'
         os.mkdir(filename)    
     print 'Downloading: %s' % name
-
+    flag = True
     if os.path.exists('%s\%s.mp3' % (filename, valid(name))):
         dflag = raw_input('This file is already existed, delete?(Y/N)')
         if dflag == 'y' :
@@ -64,14 +64,28 @@ def download(id, filename='MySongs'):
             print '%s.mp3 [removed]' % name
         else:
             print '%s.mp3 [skipped]' % name
+            flag = False
             
-    command = 'curl -o ' + '%s\%s.mp3 '%(filename, valid(name)) + url
-    command = command.encode('cp936')
-    
-    os.system(command)
-    print '%s.mp3 [downloaded]' % name
+    if flag:
+        command = 'curl -o ' + '%s\%s.mp3 '%(filename, valid(name)) + url
+        command = command.encode('cp936')
+        os.system(command)
+        print '%s.mp3 [downloaded]' % name
+
+def parseList(id , type):
+    response = req.get('http://www.xiami.com/song/playlist/id/
+                       '%s/type/%s' % (id, type),
+                       headers={'user-agent': 'Mozilla/5.0'}).text
+    data = xmltodict.parse(response)['playlist']['trackList']['track']
+    return data
+
+def downList(songlist, filename='MyAlbums'):
+    name = data['album_name']
+    for song in songlist:
+        id = song['song_id']
+        download(id, name)
 
 if __name__ == '__main__':
-    login()
+    #login()
     download('1769598794') #明年今日（Live）
     raw_input()
