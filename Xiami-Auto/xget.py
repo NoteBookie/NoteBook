@@ -1,16 +1,15 @@
-# -*- coding: cp936 -*-
+# -*- coding: utf-8 -*-
+from optparse import OptionParser
 import urllib2
 import requests
 import xmltodict
 import sys
 import os
 
-username = ''
-password = ''
 req = requests.session()
 
 def valid(filename):
-    return filename.replace(':','').replace('*','').replace(' ','')
+    return filename.replace(':','').replace('*','').replace(u'ãƒ»','').replace(' ','_').replace('&#039;','\'')
 
 def decode(eloc):
     start = eloc.find('h')
@@ -31,61 +30,73 @@ def decode(eloc):
         result += newloc[p]
     return urllib2.unquote(result).replace('^','0')
 
-def login():
-    url = 'https://login.xiami.com/member/login'
-    data = {
-        'email':username,
-        'password':password,
-        'done': 'http://www.xiami.com/account',
-        'submit': u'µÇ Â¼'
-        }
-    headers = {
-        'user-agent': 'Mozilla/5.0',
-        }
-    req.post(url, data=data, headers=headers).text
-    
-
 def download(id, filename='MySongs'):
     response = req.get('http://www.xiami.com/song/playlist/id/%s' % id,
                        headers = {'user-agent': 'Mozilla/5.0',}).text
+    
     data = xmltodict.parse(response)['playlist']['trackList']['track']
-    name = data['title']
+    name = valid(data['title'])
     
     url = decode(data['location']).encode('utf-8')
+
     if not os.path.exists(filename):
         print 'Creating a new folder...'
         os.mkdir(filename)    
-    print 'Downloading: %s' % name
+
+    print 'Downloading: %s' % valid(name)
+
     flag = True
-    if os.path.exists('%s\%s.mp3' % (filename, valid(name))):
+    if os.path.exists('%s\%s.mp3' % (filename, name)):
         dflag = raw_input('This file is already existed, delete?(Y/N)')
-        if dflag == 'y' :
-            os.remove('%s\%s.mp3' % (filename, valid(name)))
+        if dflag in ('y','Y') :
+            os.remove('%s\%s.mp3' % (filename, name))
             print '%s.mp3 [removed]' % name
         else:
             print '%s.mp3 [skipped]' % name
             flag = False
             
     if flag:
-        command = 'curl -o ' + '%s\%s.mp3 '%(filename, valid(name)) + url
+        command = 'curl -o ' + '%s\%s.mp3 '%(filename, name) + url
         command = command.encode('cp936')
+        #print command
         os.system(command)
-        print '%s.mp3 [downloaded]' % name
+        print '%s.mp3 [downloaded]' % valid(name)
 
-def parseList(id , type):
-    response = req.get('http://www.xiami.com/song/playlist/id/
-                       '%s/type/%s' % (id, type),
+def downList(id , type):
+    response = req.get('http://www.xiami.com/song/playlist/id/%s/type/%s' % (id, type),
                        headers={'user-agent': 'Mozilla/5.0'}).text
-    data = xmltodict.parse(response)['playlist']['trackList']['track']
-    return data
+    songlist = xmltodict.parse(response)
+    filename = 'songlist_' + id
+    
 
-def downList(songlist, filename='MyAlbums'):
-    name = data['album_name']
-    for song in songlist:
-        id = song['song_id']
-        download(id, name)
+    for song in songlist['playlist']['trackList']['track']:
+        if(song == 'title'):
+            sid = songlist['playlist']['trackList']['track']['song_id']
+            download(sid, filename)
+            break
+        sid = song['song_id']
+        print sid
+        download(sid, filename)
+
 
 if __name__ == '__main__':
-    #login()
-    download('1769598794') #Ã÷Äê½ñÈÕ£¨Live£©
-    raw_input()
+    usage = 'usage: %prog [options] id'
+    parser = OptionParser(usage, version='%prog 1.0')
+    parser.add_option('-s', '--single' ,dest = 'sid',
+                      help = 'Download single song. Give the song\'s id.')
+    parser.add_option('-a', '--album', dest = 'aid',
+                      help = 'Down Album. need album\'s id')
+    parser.add_option('-l', '--list', dest = 'lid',
+                      help = 'Down user\'s list. need list id')
+    (options, args) = parser.parse_args()
+
+    if options.sid:
+        download(options.sid)
+    elif options.aid:
+        downList(options.aid,'1')
+    elif options.lid:
+        downList(options.lid,'3')
+    else:
+        parser.error('You can type -h to get help information.')
+
+    #raw_input('[Press ENTER to exit]')
